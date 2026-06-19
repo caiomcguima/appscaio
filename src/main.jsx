@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Plus, TrendingDown, Calendar, Tag, Settings, X, DollarSign, TrendingUp, ChevronDown } from 'lucide-react';
+import { Trash2, Plus, TrendingDown, Calendar, Tag, Settings, X, DollarSign, TrendingUp, ChevronDown, Lock } from 'lucide-react';
 import ReactDOM from 'react-dom/client';
 
+// ALTERE A SUA SENHA AQUI ABAIXO:
+const SENHA_CORRETA = 'cmcg2408';
+
 export default function PainelDespesas() {
+  // Controle de Autenticação
+  const [autenticado, setAutenticado] = useState(() => {
+    return localStorage.getItem('app_autenticado') === 'true';
+  });
+  const [senhaInput, setSenhaInput] = useState('');
+  const [erroSenha, setErroSenha] = useState(false);
+
   // Estado do mês selecionado
   const [mesSelecionado, setMesSelecionado] = useState(new Date().toISOString().slice(0, 7));
   const [mesesDisponiveis, setMesesDisponiveis] = useState([]);
@@ -72,19 +82,17 @@ export default function PainelDespesas() {
   // Gerar lista de meses de junho/2026 até junho/2027
   useEffect(() => {
     const meses = [];
-    
-    // Começando em junho/2026
     for (let i = 0; i < 13; i++) {
-      const data = new Date(2026, 5 + i, 1); // 5 = junho (0-indexed)
+      const data = new Date(2026, 5 + i, 1);
       const mesStr = data.toISOString().slice(0, 7);
       meses.push(mesStr);
     }
-    
     setMesesDisponiveis(meses);
   }, []);
  
   // Atualizar dados quando mês muda
   useEffect(() => {
+    if (!autenticado) return;
     const savedDespesas = localStorage.getItem(`despesas_${mesSelecionado}`);
     setDespesas(savedDespesas ? JSON.parse(savedDespesas) : (mesSelecionado === '2026-06' ? [
       { id: 1, valor: 4.50, categoria: 'Transporte', data: '2026-06-16', descricao: '' },
@@ -99,32 +107,44 @@ export default function PainelDespesas() {
  
     setFiltroCategoria('Todas');
     setMostrarSeletorMes(false);
-  }, [mesSelecionado]);
+  }, [mesSelecionado, autenticado]);
  
   // Salvar dados no localStorage
   useEffect(() => {
-    localStorage.setItem(`despesas_${mesSelecionado}`, JSON.stringify(despesas));
-  }, [despesas, mesSelecionado]);
+    if (autenticado) localStorage.setItem(`despesas_${mesSelecionado}`, JSON.stringify(despesas));
+  }, [despesas, mesSelecionado, autenticado]);
  
   useEffect(() => {
-    localStorage.setItem(`receitas_${mesSelecionado}`, JSON.stringify(receitas));
-  }, [receitas, mesSelecionado]);
+    if (autenticado) localStorage.setItem(`receitas_${mesSelecionado}`, JSON.stringify(receitas));
+  }, [receitas, mesSelecionado, autenticado]);
  
   useEffect(() => {
-    localStorage.setItem(`metas_${mesSelecionado}`, JSON.stringify(metas));
-  }, [metas, mesSelecionado]);
+    if (autenticado) localStorage.setItem(`metas_${mesSelecionado}`, JSON.stringify(metas));
+  }, [metas, mesSelecionado, autenticado]);
  
   useEffect(() => {
-    if (mostrarConfigMetas) {
-      setMetasTemp({ ...metas });
-    }
+    if (mostrarConfigMetas) setMetasTemp({ ...metas });
   }, [mostrarConfigMetas, metas]);
  
   useEffect(() => {
-    if (mostrarConfigReceita) {
-      setNovaReceita((receitas.valor || 0).toString());
-    }
+    if (mostrarConfigReceita) setNovaReceita((receitas.valor || 0).toString());
   }, [mostrarConfigReceita, receitas]);
+ 
+  const verificarSenha = () => {
+    if (senhaInput === SENHA_CORRETA) {
+      setAutenticado(true);
+      setErroSenha(false);
+      localStorage.setItem('app_autenticado', 'true');
+    } else {
+      setErroSenha(true);
+      setSenhaInput('');
+    }
+  };
+
+  const fazerLogout = () => {
+    setAutenticado(false);
+    localStorage.removeItem('app_autenticado');
+  };
  
   const adicionarDespesa = () => {
     if (novoValor && parseFloat(novoValor) > 0) {
@@ -213,16 +233,62 @@ export default function PainelDespesas() {
     return '✕ Déficit';
   };
  
+  // Se NÃO estiver autenticado, mostra a tela de bloqueio
+  if (!autenticado) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+        <div className="bg-slate-900 p-8 rounded-xl border-2 border-purple-500/30 max-w-sm w-full text-center shadow-2xl">
+          <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-500/30">
+            <Lock size={28} className="text-purple-400" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2 text-white">Acesso Restrito</h2>
+          <p className="text-sm text-gray-400 mb-6">Insira a senha para acessar o painel de finanças.</p>
+          
+          <div className="space-y-4">
+            <input
+              type="password"
+              value={senhaInput}
+              onChange={(e) => setSenhaInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && verificarSenha()}
+              placeholder="Digite a senha"
+              className="w-full px-4 py-3 rounded-lg text-white bg-slate-950 border border-slate-700 placeholder-gray-600 text-center focus:outline-none focus:border-purple-500 transition-all"
+            />
+            
+            {erroSenha && (
+              <p className="text-xs text-red-400 font-medium">⚠️ Senha incorreta. Tente novamente.</p>
+            )}
+
+            <button
+              onClick={verificarSenha}
+              className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-slate-950 font-bold rounded-lg transition-all shadow-lg shadow-purple-500/20"
+            >
+              Entrar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Se ESTIVER autenticado, mostra o app original
   return (
     <div className="min-h-screen pb-12 bg-slate-950 text-slate-100">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2" style={{ color: '#a78bfa' }}>
-            Controle de Finanças Pessoais
-          </h1>
-          <p className="text-gray-400">Acompanhe receitas, despesas e saldo em tempo real • Dados salvos automaticamente</p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold mb-2" style={{ color: '#a78bfa' }}>
+              Controle de Finanças Pessoais
+            </h1>
+            <p className="text-gray-400">Acompanhe receitas, despesas e saldo em tempo real • Dados salvos automaticamente</p>
+          </div>
+          <button 
+            onClick={fazerLogout}
+            className="px-4 py-2 bg-slate-900 border border-red-500/40 text-red-400 text-sm font-medium rounded-lg hover:bg-red-500/10 transition-all self-start sm:self-center"
+          >
+            Sair do App
+          </button>
         </div>
  
         {/* Seletor de Mês */}
