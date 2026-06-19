@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Plus, TrendingDown, Calendar, Tag, Settings, X, DollarSign, TrendingUp, ChevronDown } from 'lucide-react';
- 
+import ReactDOM from 'react-dom/client';
+
 export default function PainelDespesas() {
   // Estado do mês selecionado
   const [mesSelecionado, setMesSelecionado] = useState(new Date().toISOString().slice(0, 7));
@@ -213,7 +214,7 @@ export default function PainelDespesas() {
   };
  
   return (
-    <div className="min-h-screen pb-12">
+    <div className="min-h-screen pb-12 bg-slate-950 text-slate-100">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         
         {/* Header */}
@@ -643,4 +644,9 @@ export default function PainelDespesas() {
     </div>
   );
 }
- 
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <PainelDespesas />
+  </React.StrictMode>,
+)
